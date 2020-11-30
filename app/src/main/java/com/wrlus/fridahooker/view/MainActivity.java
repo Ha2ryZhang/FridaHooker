@@ -24,6 +24,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -73,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback,
     }
 
     @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item){
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.btnRefresh) {
             checkAll();
         } else if (item.getItemId() == R.id.btnSettings) {
@@ -101,7 +102,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback,
                 makeMessageDialog("Tips", "Unfinished feature").show();
                 break;
             default:
-                LogUtil.e(TAG, "Receive odd message: "+msg.what);
+                LogUtil.e(TAG, "Receive odd message: " + msg.what);
                 break;
         }
         return true;
@@ -186,7 +187,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback,
                     String fridaStatusString = getString(fridaAgent.isInstalled() ? R.string.frida_ready : R.string.frida_missing);
                     fridaStatusString = String.format(fridaStatusString, fridaVersion);
                     textViewFridaVersion.setText(fridaStatusString);
-                    setProgress(R.id.progressBarFridaInstall, fridaAgent.isInstalled() ? 1 : 0 );
+                    setProgress(R.id.progressBarFridaInstall, fridaAgent.isInstalled() ? 1 : 0);
                     switchStatus.setEnabled(fridaAgent.isInstalled());
                     switchStatus.setChecked(fridaAgent.isStarted());
                     progressBar.setVisibility(View.GONE);
@@ -207,7 +208,7 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback,
             String abi = fridaAgent.getSystemFridaAbi();
             try {
                 File cacheFile = fridaAgent.extractLocalFrida(
-                        getAssets().open("frida-server-"+fridaVersion+"-android-"+abi+".xz"),
+                        getAssets().open("frida-server-" + fridaVersion + "-android-" + abi + ".xz"),
                         getCacheDir().getAbsolutePath());
                 Message msg = handler.obtainMessage(Msg.DOWNLOAD_FRIDA_FROM_ASSET_SUCCESS, cacheFile);
                 handler.sendMessage(msg);
@@ -235,7 +236,26 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback,
     private void installFrida(File cacheFile) {
         boolean isSuccess = false;
         if (fridaAgent != null) {
-            isSuccess = fridaAgent.installFrida(cacheFile);
+            try {
+                String abi = fridaAgent.getSystemFridaAbi();
+                //build tcpforward
+                File tcpForward = new File(getCacheDir().getAbsolutePath() + File.separator + "tcpforward");
+                InputStream is = getAssets().open("tcpforward_linux_" + abi);
+                FileOutputStream fos = new FileOutputStream(tcpForward);
+                int len;
+                byte[] buffer = new byte[4096];
+                while (-1 != (len = is.read(buffer))) {
+                    fos.write(buffer, 0, len);
+                    fos.flush();
+                }
+                fos.close();
+                is.close();
+                isSuccess = fridaAgent.installFrida(cacheFile, tcpForward);
+            } catch (IOException e) {
+                Message msg = handler.obtainMessage(Msg.DOWNLOAD_FRIDA_FROM_ASSET_FAILED, e);
+                handler.sendMessage(msg);
+            }
+
         }
         if (isSuccess) {
             checkAll();
@@ -296,7 +316,8 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback,
         AlertDialog.Builder dialog = new AlertDialog.Builder(MainActivity.this);
         dialog.setTitle(title);
         dialog.setMessage(message);
-        dialog.setNegativeButton(R.string.close, (dialog1, which) -> {});
+        dialog.setNegativeButton(R.string.close, (dialog1, which) -> {
+        });
         return dialog;
     }
 
@@ -305,7 +326,8 @@ public class MainActivity extends AppCompatActivity implements Handler.Callback,
         AlertDialog.Builder dialog = new AlertDialog.Builder(MainActivity.this);
         dialog.setTitle(title);
         dialog.setMessage(message);
-        dialog.setNegativeButton(R.string.close, (dialog1, which) -> {});
+        dialog.setNegativeButton(R.string.close, (dialog1, which) -> {
+        });
         return dialog;
     }
 

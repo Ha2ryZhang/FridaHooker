@@ -26,7 +26,8 @@ public class FridaAgent {
 
     public FridaAgent(String installPath) {
         this.installPath = installPath;
-        Log.d("FridaAgent", "Create FridaAgent, isSupported="+isSupported);
+        Log.d("FridaAgent", "Create FridaAgent, isSupported=" + isSupported);
+        Log.d("FridaAgent", installPath);
     }
 
     public File extractLocalFrida(InputStream is, String to) throws IOException {
@@ -41,22 +42,24 @@ public class FridaAgent {
         }
         xzis.close();
         fos.close();
-        LogUtil.d(TAG, "Local frida cache file path: "+cacheFile.getAbsolutePath());
+        LogUtil.d(TAG, "Local frida cache file path: " + cacheFile.getAbsolutePath());
         return cacheFile;
     }
 
-    public boolean installFrida(File cacheFile) {
+    public boolean installFrida(File cacheFile, File tcpForward) {
         if (!isSupported) {
             return false;
         }
         final String[] cmds = {
                 "mkdir -p " + installPath,
-                "mv " + cacheFile.getAbsolutePath() + " " + installPath + File.separator
+                "mv " + cacheFile.getAbsolutePath() + " " + installPath + File.separator,
+                "mv " + tcpForward.getAbsolutePath() + " " + installPath + File.separator
         };
+        LogUtil.i(TAG,tcpForward.getAbsolutePath());
         LogUtil.i(TAG, installPath);
         for (String cmd : cmds) {
             int code = NativeRootShell.execute(cmd);
-            LogUtil.d(TAG, "installFrida `"+cmd+"` command exit with code "+code);
+            LogUtil.d(TAG, "installFrida `" + cmd + "` command exit with code " + code);
             if (0 != code) {
                 return false;
             }
@@ -69,7 +72,7 @@ public class FridaAgent {
             return false;
         }
         int code = NativeRootShell.execute("rm -rf " + installPath);
-        LogUtil.d(TAG, "removeFrida exit with code "+code);
+        LogUtil.d(TAG, "removeFrida exit with code " + code);
         return 0 == code;
     }
 
@@ -78,12 +81,14 @@ public class FridaAgent {
             return false;
         }
         String[] cmds = {
-                "chmod +x " + installPath + File.separator+ "frida-server",
+                "chmod +x " + installPath + File.separator + "frida-server",
                 "su -c " + installPath + File.separator + "frida-server  &",
+                "chmod +x " + installPath + File.separator + "tcpforward",
+                "su -c " + installPath + File.separator + "tcpforward 0.0.0.0:27043 127.0.0.1:27042  &",
         };
         for (String cmd : cmds) {
             int code = NativeRootShell.execute(cmd);
-            LogUtil.d(TAG, "startFrida `"+cmd+"` command exit with code "+code);
+            LogUtil.d(TAG, "startFrida `" + cmd + "` command exit with code " + code);
             if (0 != code) {
                 return false;
             }
@@ -100,7 +105,7 @@ public class FridaAgent {
         };
         for (String cmd : cmds) {
             int code = NativeRootShell.execute(cmd);
-            LogUtil.d(TAG, "stopFrida `"+cmd+"` command exit with code "+code);
+            LogUtil.d(TAG, "stopFrida `" + cmd + "` command exit with code " + code);
             if (0 != code) {
                 return false;
             }
@@ -159,7 +164,7 @@ public class FridaAgent {
             return false;
         }
         int code = NativeRootShell.execute("ls " + installPath + File.separator + "frida-server");
-        LogUtil.d(TAG, "checkInstallation exit with code "+code);
+        LogUtil.d(TAG, "checkInstallation exit with code " + code);
         return 0 == code;
     }
 
